@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 // The poem about permission — written for this entry, fixed text.
@@ -14,6 +14,24 @@ const POEM = [
   "and neither of us moves alone.",
 ].join("\n") + "\n";
 
+// Validate the entry before writing: 1-280 Unicode code points, valid UTF-8,
+// and not only whitespace (competition rules).
+const codePoints = [...POEM].length;
+if (codePoints < 1 || codePoints > 280) {
+  throw new Error(`poem must be 1-280 code points, got ${codePoints}`);
+}
+if (Buffer.from(POEM, "utf8").toString("utf8") !== POEM) {
+  throw new Error("poem is not valid UTF-8");
+}
+if (POEM.trim().length === 0) {
+  throw new Error("poem must not be only whitespace");
+}
+
 const outDir = process.env.MAKEFUN_OUTPUT_DIR ?? "/output";
 mkdirSync(outDir, { recursive: true });
-writeFileSync(join(outDir, "entry.txt"), POEM, "utf8");
+
+// Write atomically: temp file in the same directory, then rename.
+const dest = join(outDir, "entry.txt");
+const tmp = join(outDir, "entry.txt.tmp");
+writeFileSync(tmp, POEM, "utf8");
+renameSync(tmp, dest);
